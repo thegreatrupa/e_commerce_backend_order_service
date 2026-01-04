@@ -2,7 +2,6 @@ package com.example.order_service.service;
 
 import com.example.order_service.dto.CreateOrderRequest;
 import com.example.order_service.dto.OrderItemRequest;
-import com.example.order_service.dto.OrderResponse;
 import com.example.order_service.entity.Order;
 import com.example.order_service.entity.OrderItem;
 import com.example.order_service.entity.OrderStatus;
@@ -10,7 +9,6 @@ import com.example.order_service.exceptions.ForbiddenException;
 import com.example.order_service.exceptions.BadRequestException;
 import com.example.order_service.exceptions.ResourceNotFoundException;
 import com.example.order_service.repository.OrderRepository;
-import com.example.order_service.util.JwtUtils;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -27,15 +25,13 @@ import java.util.Map;
 @Service
 public class OrderService {
     private final OrderRepository orderRepository;
-    private final JwtUtils jwtUtils;
     private final RestTemplate restTemplate;
 
     @Value("${product.service.url}")
     private String ProductServiceUrl;
 
-    public OrderService(OrderRepository orderRepository, JwtUtils jwtUtils, RestTemplate restTemplate) {
+    public OrderService(OrderRepository orderRepository, RestTemplate restTemplate) {
         this.orderRepository = orderRepository;
-        this.jwtUtils = jwtUtils;
         this.restTemplate = restTemplate;
     }
 

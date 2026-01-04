@@ -5,9 +5,7 @@ import com.example.order_service.dto.OrderResponse;
 import com.example.order_service.entity.Order;
 import com.example.order_service.mapper.OrderMapper;
 import com.example.order_service.service.OrderService;
-import com.example.order_service.util.JwtUtils;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,44 +14,44 @@ import java.util.List;
 @RequestMapping("/orders")
 public class OrderController {
     private final OrderService orderService;
-    private final JwtUtils jwtUtils;
     private final OrderMapper orderMapper;
 
-    public OrderController(OrderService orderService, JwtUtils jwtUtils, OrderMapper orderMapper) {
+    public OrderController(OrderService orderService, OrderMapper orderMapper) {
         this.orderService = orderService;
-        this.jwtUtils = jwtUtils;
         this.orderMapper = orderMapper;
     }
 
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(@RequestBody CreateOrderRequest request,
-                                                     @AuthenticationPrincipal Long userId) {
-        Order order = orderService.createOrder(request, userId);
+                                                     @RequestHeader("X-User-Id") String userId) {
+        Long buyerId = Long.valueOf(userId);
+        Order order = orderService.createOrder(request, buyerId);
         return ResponseEntity.ok(orderMapper.toResponse(order));
     }
 
     @GetMapping
-    public ResponseEntity<List<OrderResponse>> myOrders(@RequestHeader("Authorization") String authHeader, @AuthenticationPrincipal Long userId) {
-        List<Order> orders = orderService.getOrdersByBuyer(userId);
+    public ResponseEntity<List<OrderResponse>> myOrders(@RequestHeader("X-User-Id") String userId) {
+        Long buyerId = Long.valueOf(userId);
+        List<Order> orders = orderService.getOrdersByBuyer(buyerId);
         return ResponseEntity.ok(orders.stream()
                 .map(orderMapper::toResponse)
                 .toList());
     }
 
     @GetMapping("/seller")
-    public ResponseEntity<List<OrderResponse>> sellerOrders(@RequestHeader("Authorization") String authHeader, @AuthenticationPrincipal Long userId) {
-        List<Order> orders = orderService.getOrdersBySeller(userId);
+    public ResponseEntity<List<OrderResponse>> sellerOrders(@RequestHeader("X-User-Id") String userId) {
+        Long sellerId = Long.valueOf(userId);
+        List<Order> orders = orderService.getOrdersBySeller(sellerId);
         return ResponseEntity.ok(orders.stream()
                 .map(orderMapper::toResponse)
                 .toList());
     }
 
     @DeleteMapping("/{orderId}")
-    public void deleteOrder(
-            @PathVariable Long orderId,
-            @AuthenticationPrincipal Long userId
-    ) {
-        orderService.deleteOrder(orderId, userId);
+    public ResponseEntity<Void> deleteOrder(@PathVariable Long orderId,
+                                            @RequestHeader("X-User-Id") String userId) {
+        Long currentUserId = Long.valueOf(userId);
+        orderService.deleteOrder(orderId, currentUserId);
+        return ResponseEntity.noContent().build();
     }
-
 }

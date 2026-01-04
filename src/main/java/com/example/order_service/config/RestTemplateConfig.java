@@ -1,21 +1,22 @@
-package com.example.order_service.config; // Assuming config package
+package com.example.order_service.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Collections;
-import java.util.List;
 
 @Configuration
 public class RestTemplateConfig {
 
+    @Value("${internal.security.key}")
+    private String internalKey;
+
     @Bean
     public RestTemplate restTemplate() {
         RestTemplate restTemplate = new RestTemplate();
-        AuthTokenInterceptor interceptor = new AuthTokenInterceptor();
-        restTemplate.setInterceptors(Collections.singletonList(interceptor));
-
+        restTemplate.getInterceptors().add(new InternalHeaderInterceptor(internalKey));
         return restTemplate;
     }
 }

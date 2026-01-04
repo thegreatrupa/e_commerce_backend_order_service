@@ -10,18 +10,24 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.io.IOException;
 
-public class AuthTokenInterceptor implements ClientHttpRequestInterceptor {
+public class InternalHeaderInterceptor implements ClientHttpRequestInterceptor {
+    private final String internalKey;
+
+    public InternalHeaderInterceptor(String internalKey) {
+        this.internalKey = internalKey;
+    }
 
     @Override
     public ClientHttpResponse intercept(HttpRequest request, byte[] body, ClientHttpRequestExecution execution) throws IOException {
+        request.getHeaders().set("X-Internal-Source", internalKey);
+
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
-
         if (attributes != null) {
-            String authHeader = attributes.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
+            String userId = attributes.getRequest().getHeader("X-User-Id");
+            String userEmail = attributes.getRequest().getHeader("X-User-Email");
 
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                request.getHeaders().set(HttpHeaders.AUTHORIZATION, authHeader);
-            }
+            if (userId != null) request.getHeaders().set("X-User-Id", userId);
+            if (userEmail != null) request.getHeaders().set("X-User-Email", userEmail);
         }
 
         return execution.execute(request, body);
