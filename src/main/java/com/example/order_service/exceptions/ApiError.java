@@ -1,11 +1,34 @@
 package com.example.order_service.exceptions;
 
-public class ApiError {
-    private int status;
-    private String message;
+import java.time.Instant;
 
-    public ApiError(int status, String message) {
+public class ApiError {
+    private final int status;
+    private final String message;
+    private final String errorCode;
+    private final Instant timestamp;
+
+    public ApiError(int status, String message, String errorCode) {
         this.status = status;
         this.message = message;
+        this.errorCode = errorCode;
+        this.timestamp = Instant.now();
+    }
+
+
+    public int getStatus() {
+        return status;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
     }
 }

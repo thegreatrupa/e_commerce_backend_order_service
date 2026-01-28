@@ -11,18 +11,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(ResourceNotFoundException ex){
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(new ApiError(404, ex.getMessage()));
+                .body(new ApiError(404, ex.getMessage(), "RESOURCE_NOT_FOUND"));
     }
 
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ApiError> handleForbidden(ForbiddenException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(new ApiError(403, ex.getMessage()));
+                .body(new ApiError(403, ex.getMessage(), "FORBIDDEN_REQUEST"));
     }
 
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ApiError> handleBadRequest(BadRequestException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ApiError(400, ex.getMessage()));
+                .body(new ApiError(400, ex.getMessage(), "BAD_REQUEST"));
     }
 }

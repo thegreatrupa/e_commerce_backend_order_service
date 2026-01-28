@@ -9,7 +9,7 @@ public class OrderItem {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Long productId;
-    private Integer quantity;
+    private Integer stock;
     private Long sellerId;
     private Double price;
 
@@ -35,11 +35,11 @@ public class OrderItem {
     }
 
     public Integer getQuantity() {
-        return quantity;
+        return stock;
     }
 
     public void setQuantity(Integer quantity) {
-        this.quantity = quantity;
+        this.stock = quantity;
     }
 
     public Long getSellerId() {

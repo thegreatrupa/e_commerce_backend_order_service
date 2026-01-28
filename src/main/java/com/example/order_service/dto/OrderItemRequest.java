@@ -2,7 +2,7 @@ package com.example.order_service.dto;
 
 public class OrderItemRequest {
     private Long productId;
-    private Integer quantity;
+    private Integer stock;
 
     public Long getProductId() {
         return productId;
@@ -13,10 +13,10 @@ public class OrderItemRequest {
     }
 
     public Integer getQuantity() {
-        return quantity;
+        return stock;
     }
 
     public void setQuantity(Integer quantity) {
-        this.quantity = quantity;
+        this.stock = quantity;
     }
 }
