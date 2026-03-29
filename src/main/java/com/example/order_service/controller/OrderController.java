@@ -38,9 +38,8 @@ public class OrderController {
                 .toList());
     }
 
-    @GetMapping("/seller")
-    public ResponseEntity<List<OrderResponse>> sellerOrders(@RequestHeader("X-User-Id") String userId) {
-        Long sellerId = Long.valueOf(userId);
+    @GetMapping("/seller/{sellerId}")
+    public ResponseEntity<List<OrderResponse>> sellerOrders(@PathVariable Long sellerId, @RequestHeader("X-User-Id") String userId) {
         List<Order> orders = orderService.getOrdersBySeller(sellerId);
         return ResponseEntity.ok(orders.stream()
                 .map(orderMapper::toResponse)
@@ -52,6 +51,6 @@ public class OrderController {
                                             @RequestHeader("X-User-Id") String userId) {
         Long currentUserId = Long.valueOf(userId);
         orderService.deleteOrder(orderId, currentUserId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 }

@@ -10,6 +10,8 @@ import com.example.order_service.exceptions.BadRequestException;
 import com.example.order_service.exceptions.ResourceNotFoundException;
 import com.example.order_service.repository.OrderRepository;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -27,6 +29,8 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final RestTemplate restTemplate;
 
+    private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
+
     @Value("${product.service.url}")
     private String ProductServiceUrl;
 
@@ -36,26 +40,44 @@ public class OrderService {
     }
 
     @Transactional
-    public Order createOrder(CreateOrderRequest request, Long buyerId){
+    public Order createOrder(CreateOrderRequest request, Long buyerId) {
         List<OrderItem> items = new ArrayList<>();
         double total = 0.0;
 
-        for(OrderItemRequest it: request.getItems()){
+        for (OrderItemRequest it : request.getItems()) {
             String productUrl = ProductServiceUrl + "/products/" + it.getProductId();
-            ResponseEntity<Map> resp = restTemplate.getForEntity(productUrl, Map.class);
-            if(!resp.getStatusCode().is2xxSuccessful() || resp.getBody() == null){
-                throw new RuntimeException("Product not found: " + it.getProductId());
+
+            Map body;
+            try {
+                // RestTemplate will throw an exception if Product Service returns 404/400
+                ResponseEntity<Map> resp = restTemplate.getForEntity(productUrl, Map.class);
+                body = resp.getBody();
+            } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
+                // Catching 404 from Product Service
+                throw new ResourceNotFoundException("Product not found with ID: " + it.getProductId());
+            } catch (Exception e) {
+                throw new BadRequestException("Could not verify product: " + it.getProductId());
             }
-            Map body = resp.getBody();
+
+            if (body == null) throw new ResourceNotFoundException("Product data is empty for ID: " + it.getProductId());
+
             Integer stock = (Integer) body.get("stock");
             Double price = Double.valueOf(body.get("price").toString());
             Long sellerId = Long.valueOf(body.get("sellerId").toString());
 
-            if(stock < it.getQuantity()) throw new RuntimeException("Insufficient stock for product " + it.getProductId());
+            // Use BadRequestException for business logic failures (insufficient stock)
+            if (stock < it.getQuantity()) {
+                throw new BadRequestException("Insufficient stock for product " + it.getProductId() +
+                        ". Available: " + stock + ", Requested: " + it.getQuantity());
+            }
 
-            String decUrl = ProductServiceUrl + "/products/" + it.getProductId() + "/decrement?quantity=" + it.getQuantity();
-            HttpEntity<Void> requestEntity = new HttpEntity<>(new HttpHeaders());
-            restTemplate.exchange(decUrl, HttpMethod.POST, requestEntity, Void.class);
+            // Decrement logic
+            try {
+                String decUrl = ProductServiceUrl + "/products/" + it.getProductId() + "/decrement?quantity=" + it.getQuantity();
+                restTemplate.postForEntity(decUrl, null, Void.class);
+            } catch (Exception e) {
+                throw new BadRequestException("Stock decrement failed for product: " + it.getProductId());
+            }
 
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(it.getProductId());
@@ -74,8 +96,7 @@ public class OrderService {
         order.setItems(items);
 
         items.forEach(i -> i.setOrder(order));
-        Order saved = orderRepository.save(order);
-        return saved;
+        return orderRepository.save(order);
     }
 
     @Transactional
@@ -85,11 +106,15 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
         if (!order.getBuyerId().equals(currentUserId)) {
-            throw new ForbiddenException("You are not allowed to delete this order");
+            throw new ResourceNotFoundException("Order not found");
         }
 
         if (order.getOrderStatus() != OrderStatus.PENDING) {
             throw new BadRequestException("Only PENDING orders can be deleted");
+        }
+
+        for(OrderItem orderItem: order.getItems()){
+            incrementProductStock(orderItem.getProductId(), orderItem.getQuantity());
         }
 
         orderRepository.delete(order);
@@ -102,7 +127,7 @@ public class OrderService {
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
 
         if (!order.getBuyerId().equals(currentUserId)) {
-            throw new ForbiddenException("You are not allowed to modify this order");
+            throw new ResourceNotFoundException("Order not found");
         }
 
         if (order.getOrderStatus() != OrderStatus.PENDING) {
@@ -114,6 +139,7 @@ public class OrderService {
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Order item not found"));
 
+        incrementProductStock(item.getProductId(), item.getQuantity());
         order.getItems().remove(item);
 
         if (order.getItems().isEmpty()) {
@@ -127,6 +153,16 @@ public class OrderService {
 
         order.setTotalAmount(newTotal);
         return orderRepository.save(order);
+    }
+
+    void incrementProductStock(Long productId, int quantity){
+        try{
+            String incUrl = ProductServiceUrl + "/products/" + productId + "/increment?quantity=" + quantity;
+            restTemplate.postForEntity(incUrl, null, Void.class);
+        } catch (Exception e) {
+            logger.error("Failed to increase product quantity - {}", String.valueOf(e));
+            throw new BadRequestException("Failed to restock product ID: " + productId);
+        }
     }
 
 
@@ -145,7 +181,7 @@ public class OrderService {
         return result;
     }
 
-    public Order getOrdrById(long id){
+    public Order getOrderById(long id){
         return orderRepository.getById(id);
     }
 }

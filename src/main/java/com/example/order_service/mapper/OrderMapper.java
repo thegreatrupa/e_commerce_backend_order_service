@@ -31,6 +31,7 @@ public class OrderMapper {
         res.setProductId(item.getProductId());
         res.setQuantity(item.getQuantity());
         res.setPrice(item.getPrice());
+        res.setSellerId(item.getSellerId());
         return res;
     }
 }
