@@ -1,0 +1,12 @@
+services:
+  order-service:
+    image: thegreatrupa/order-service:latest
+    container_name: order-service
+
+    env_file:
+      - .env
+
+    ports:
+      - "8083:8083"
+
+    restart: unless-stopped
