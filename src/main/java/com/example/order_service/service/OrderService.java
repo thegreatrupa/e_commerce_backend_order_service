@@ -30,14 +30,15 @@ public class OrderService {
     private final RestTemplate restTemplate;
 
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
-    private OrderEventProducer producer;
+    private final OrderEventProducer producer;
 
     @Value("${product.service.url}")
     private String ProductServiceUrl;
 
-    public OrderService(OrderRepository orderRepository, RestTemplate restTemplate) {
+    public OrderService(OrderRepository orderRepository, RestTemplate restTemplate, OrderEventProducer producer) {
         this.orderRepository = orderRepository;
         this.restTemplate = restTemplate;
+        this.producer = producer;
     }
 
     @Transactional
