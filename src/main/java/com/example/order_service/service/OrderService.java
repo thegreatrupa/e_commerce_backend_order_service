@@ -2,20 +2,20 @@ package com.example.order_service.service;
 
 import com.example.order_service.dto.CreateOrderRequest;
 import com.example.order_service.dto.OrderItemRequest;
+import com.example.order_service.dto.OrderResponse;
 import com.example.order_service.entity.Order;
 import com.example.order_service.entity.OrderItem;
 import com.example.order_service.entity.OrderStatus;
 import com.example.order_service.exceptions.ForbiddenException;
 import com.example.order_service.exceptions.BadRequestException;
 import com.example.order_service.exceptions.ResourceNotFoundException;
+import com.example.order_service.kafka.event.OrderCreateEvent;
+import com.example.order_service.kafka.producer.OrderEventProducer;
 import com.example.order_service.repository.OrderRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -30,6 +30,7 @@ public class OrderService {
     private final RestTemplate restTemplate;
 
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
+    private OrderEventProducer producer;
 
     @Value("${product.service.url}")
     private String ProductServiceUrl;
@@ -96,7 +97,22 @@ public class OrderService {
         order.setItems(items);
 
         items.forEach(i -> i.setOrder(order));
-        return orderRepository.save(order);
+        Order orderResponse = orderRepository.save(order);
+
+        for (OrderItem it : order.getItems()) {
+            producer.publishOrderCreated(
+                    new OrderCreateEvent(
+                            order.getId(),
+                            it.getProductId(),
+                            it.getQuantity(),
+                            order.getBuyerId()
+                    )
+            );
+        }
+
+
+
+        return orderResponse;
     }
 
     @Transactional
