@@ -46,55 +46,20 @@ public class OrderService {
         List<OrderItem> items = new ArrayList<>();
         double total = 0.0;
 
-        for (OrderItemRequest it : request.getItems()) {
-            String productUrl = ProductServiceUrl + "/products/" + it.getProductId();
-
-            Map body;
-            try {
-                // RestTemplate will throw an exception if Product Service returns 404/400
-                ResponseEntity<Map> resp = restTemplate.getForEntity(productUrl, Map.class);
-                body = resp.getBody();
-            } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
-                // Catching 404 from Product Service
-                throw new ResourceNotFoundException("Product not found with ID: " + it.getProductId());
-            } catch (Exception e) {
-                throw new BadRequestException("Could not verify product: " + it.getProductId());
-            }
-
-            if (body == null) throw new ResourceNotFoundException("Product data is empty for ID: " + it.getProductId());
-
-            Integer stock = (Integer) body.get("stock");
-            Double price = Double.valueOf(body.get("price").toString());
-            Long sellerId = Long.valueOf(body.get("sellerId").toString());
-
-            // Use BadRequestException for business logic failures (insufficient stock)
-            if (stock < it.getQuantity()) {
-                throw new BadRequestException("Insufficient stock for product " + it.getProductId() +
-                        ". Available: " + stock + ", Requested: " + it.getQuantity());
-            }
-
-            // Decrement logic
-            try {
-                String decUrl = ProductServiceUrl + "/products/" + it.getProductId() + "/decrement?quantity=" + it.getQuantity();
-                restTemplate.postForEntity(decUrl, null, Void.class);
-            } catch (Exception e) {
-                throw new BadRequestException("Stock decrement failed for product: " + it.getProductId());
-            }
-
-            OrderItem orderItem = new OrderItem();
-            orderItem.setProductId(it.getProductId());
-            orderItem.setQuantity(it.getQuantity());
-            orderItem.setPrice(price);
-            orderItem.setSellerId(sellerId);
-
-            items.add(orderItem);
-            total += (price * it.getQuantity());
-        }
-
         Order order = new Order();
         order.setBuyerId(buyerId);
         order.setOrderStatus(OrderStatus.PENDING);
         order.setTotalAmount(total);
+
+        for (OrderItemRequest it : request.getItems()) {
+            OrderItem orderItem = new OrderItem();
+            orderItem.setProductId(it.getProductId());
+            orderItem.setQuantity(it.getQuantity());
+            orderItem.setPrice(0.0);
+            orderItem.setSellerId(1L);
+
+            items.add(orderItem);
+        }
         order.setItems(items);
 
         items.forEach(i -> i.setOrder(order));
@@ -110,9 +75,6 @@ public class OrderService {
                     )
             );
         }
-
-
-
         return orderResponse;
     }
 
